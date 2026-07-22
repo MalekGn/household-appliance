@@ -8,13 +8,15 @@ import SortHeader from "@/components/ui/SortHeader.vue";
 import DatePicker from "@/components/ui/DatePicker.vue";
 import { useFormat } from "@/composables/useFormat";
 import { useSort } from "@/composables/useSort";
-import { api } from "@/api";
+import { api, isTauri } from "@/api";
+import { useUiStore } from "@/stores/ui";
 import { buildReport, type ClientRow, type MonthRow } from "@/lib/reports";
 import { todayIso } from "@/lib/finance";
 import type { Payment, PurchaseSummary, ScheduleRow } from "@/types/models";
 
 const { t } = useI18n();
 const fmt = useFormat();
+const ui = useUiStore();
 
 const purchases = ref<PurchaseSummary[]>([]);
 const payments = ref<Payment[]>([]);
@@ -115,7 +117,10 @@ onMounted(async () => {
   loading.value = false;
 });
 
-function exportCsv() {
+// Serialize the currently-displayed report (respecting the active period) to a
+// CSV string: a period line, a summary block, then the month and client
+// breakdowns. Leads with a BOM so Excel reads the UTF-8 accents/Arabic text.
+function buildCsv(): string {
   const r = report.value;
   const lines: string[] = [];
   const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
@@ -141,11 +146,33 @@ function exportCsv() {
   );
   for (const c of r.clients) lines.push([esc(c.clientName), c.salesTotal, c.collectedTotal].join(","));
 
-  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  return "﻿" + lines.join("\n");
+}
+
+async function exportCsv() {
+  const csv = buildCsv();
+  const filename = "rapport.csv";
+
+  // Desktop: prompt with the OS-native Save As dialog and let Rust write the
+  // file to the chosen path (keeping filesystem access on the backend). In a
+  // plain browser (dev preview / tests) fall back to a Blob download.
+  if (isTauri()) {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const path = await save({
+      defaultPath: filename,
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (!path) return; // user cancelled the dialog
+    await api.saveTextFile(path, csv);
+    ui.notify(t("rapports.exported"));
+    return;
+  }
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "rapport.csv";
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }

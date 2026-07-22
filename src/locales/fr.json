@@ -240,6 +240,7 @@
     "title": "Impayés",
     "subtitle": "Clients ayant au moins une tranche échue et impayée",
     "totalOverdue": "Total dû",
+    "exported": "Liste des impayés exportée",
     "columns": {
       "client": "Client",
       "reference": "N° Achat",
@@ -282,6 +283,7 @@
     "title": "Rapports",
     "subtitle": "Synthèse des ventes, encaissements et impayés sur la période choisie",
     "export": "Exporter le rapport",
+    "exported": "Rapport exporté",
     "empty": "Aucune donnée à présenter",
     "emptyHint": "Enregistrez des achats et des paiements pour voir apparaître les rapports.",
     "noActivity": "Aucune activité sur la période",

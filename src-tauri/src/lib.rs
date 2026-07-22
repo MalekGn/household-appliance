@@ -50,6 +50,8 @@ pub fn run() {
             commands::update_settings,
             commands::set_logo,
             commands::clear_logo,
+            // exports
+            commands::save_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running paymentSchedule");

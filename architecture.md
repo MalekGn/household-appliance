@@ -68,7 +68,10 @@ direct database or filesystem access.
   the DB into managed state, and registers every command.
 - **`commands.rs`** — the full API surface (`#[tauri::command]`): clients,
   purchases, installments, payments, impayés, schedule, dashboard, settings,
-  logo. Each locks the shared connection and returns serde models.
+  logo. Most lock the shared connection and return serde models. `save_text_file`
+  is the exception — it takes no DB state and writes UTF-8 to a caller-supplied
+  path (the Rapports CSV export), keeping filesystem writes on the backend so
+  the JS layer needs no broad `fs` write scope.
 - **`db.rs`** — connection wrapper (`Mutex<Connection>`), schema migration,
   and shared date/status/split helpers.
 - **`models.rs`** — serde structs (camelCase payloads) shared with the frontend.

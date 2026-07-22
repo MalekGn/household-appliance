@@ -8,13 +8,15 @@ import SortHeader from "@/components/ui/SortHeader.vue";
 import ListFilterBar from "@/components/ui/ListFilterBar.vue";
 import { useFormat } from "@/composables/useFormat";
 import { useSortState, sortRows } from "@/composables/useSort";
-import { api } from "@/api";
+import { api, isTauri } from "@/api";
+import { useUiStore } from "@/stores/ui";
 import type { ImpayeClient, OverdueInstallment } from "@/types/models";
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const fmt = useFormat();
+const ui = useUiStore();
 
 const impayes = ref<ImpayeClient[]>([]);
 const loading = ref(true);
@@ -81,7 +83,9 @@ onMounted(async () => {
 const tel = (phone: string) => `tel:${phone.replace(/\s/g, "")}`;
 const sms = (phone: string) => `sms:${phone.replace(/\s/g, "")}`;
 
-function exportCsv() {
+// Serialize the filtered overdue list (one row per overdue installment) to a
+// CSV string. Leads with a BOM so Excel reads the UTF-8 accents correctly.
+function buildCsv(): string {
   const header = ["Client", "Téléphone", "N° Achat", "Tranche", "Échéance", "Montant", "Jours de retard"];
   const lines = [header.join(",")];
   for (const c of filtered.value) {
@@ -99,11 +103,33 @@ function exportCsv() {
       );
     }
   }
-  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  return "﻿" + lines.join("\n");
+}
+
+async function exportCsv() {
+  const csv = buildCsv();
+  const filename = "impayes.csv";
+
+  // Desktop: prompt with the OS-native Save As dialog and let Rust write the
+  // file to the chosen path (keeping filesystem access on the backend). In a
+  // plain browser (dev preview / tests) fall back to a Blob download.
+  if (isTauri()) {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const path = await save({
+      defaultPath: filename,
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (!path) return; // user cancelled the dialog
+    await api.saveTextFile(path, csv);
+    ui.notify(t("impayes.exported"));
+    return;
+  }
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "impayes.csv";
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }

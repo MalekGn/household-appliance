@@ -99,4 +99,8 @@ export const api = {
     isTauri() ? invoke("set_logo", { sourcePath }) : Promise.resolve(mockDb.setLogo(sourcePath)),
   clearLogo: (): Promise<Settings> =>
     isTauri() ? invoke("clear_logo") : Promise.resolve(mockDb.clearLogo()),
+
+  // -- exports (desktop only; the browser uses a Blob download instead) --
+  saveTextFile: (path: string, contents: string): Promise<void> =>
+    invoke("save_text_file", { path, contents }),
 };

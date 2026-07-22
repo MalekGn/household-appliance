@@ -934,6 +934,20 @@ pub fn clear_logo(db: State<Db>) -> DbResult<Settings> {
     Ok(read_settings(&conn))
 }
 
+// ===========================================================================
+// Exports
+// ===========================================================================
+
+/// Write UTF-8 text to an arbitrary path chosen by the user via the native
+/// save dialog. The dialog itself runs on the frontend (plugin-dialog); this
+/// command owns the actual filesystem write, keeping the "Rust owns all FS
+/// access" invariant and avoiding a broad `fs:allow-write-file` scope for the
+/// JS layer. Used by the Rapports CSV export.
+#[tauri::command]
+pub fn save_text_file(path: String, contents: String) -> DbResult<()> {
+    std::fs::write(&path, contents).map_err(|e| format!("Failed to write {path}: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

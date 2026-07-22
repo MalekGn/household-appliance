@@ -240,6 +240,7 @@
     "title": "Overdue payments",
     "subtitle": "Clients with at least one overdue, unpaid installment",
     "totalOverdue": "Total due",
+    "exported": "Overdue list exported",
     "columns": {
       "client": "Client",
       "reference": "Ref.",
@@ -282,6 +283,7 @@
     "title": "Reports",
     "subtitle": "Sales, collections and overdue synthesis over the selected period",
     "export": "Export report",
+    "exported": "Report exported",
     "empty": "Nothing to report yet",
     "emptyHint": "Record purchases and payments and the reports will populate.",
     "noActivity": "No activity in this period",
