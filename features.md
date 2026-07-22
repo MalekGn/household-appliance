@@ -22,7 +22,7 @@ Status legend: ✅ done · 🟡 partial / placeholder · ⬜ planned
 | **Custom date picker** | ✅ | Shared calendar `DatePicker` (localized month/weekday names, Today button, shows the configured date format). Used in the list filters and in the new-purchase and payment forms (purchase date and each installment due date). Popup teleports to `<body>` so it is never clipped by a scroll container or modal, and closes on outside-click, Esc, or selection. |
 | **Not-found handling** | ✅ | Unknown routes render a localized “page not found” screen with Back/Dashboard actions; detail pages for a missing/deleted id show a recoverable message instead of a blank page. |
 | **Alertes** | ✅ | Dedicated alerts center: consolidates every actionable installment (overdue, due today, due within 7 days) from the full schedule. Summary tiles (count + total per kind, clickable to filter), status tabs, shared `ListFilterBar`, sortable table with a days-late / due-in "timing" column; rows link to the purchase. |
-| **Rapports (Reports)** | 🟡 | Sidebar entry + styled placeholder page. Exportable reporting deferred. |
+| **Rapports (Reports)** | ✅ | Period-scoped synthesis: quick presets (this month / this year / all) + From–To pickers, KPI row (sales & collected over the period, current outstanding & overdue snapshot), continuous month-by-month breakdown and per-client breakdown (both sortable), and a full CSV export of the report. |
 | **Windows `.msi`/`.exe` build** | 🟡 | Bundler configuration present; must be built on Windows (see README). |
 
 ## Cross-cutting

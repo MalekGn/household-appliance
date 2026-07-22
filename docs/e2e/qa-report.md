@@ -6,6 +6,62 @@ Issues found → Recommendations**. See `CLAUDE.md` (Phase 3: QA) for the workfl
 
 ---
 
+## 2026-07-22 — Feature QA: Rapports (reports) page
+
+### Summary
+
+QA pass for the newly implemented **Rapports** page (`src/views/RapportsView.vue`),
+which replaced the styled placeholder. The page loads three backend read models
+— `api.listPurchases()`, `api.listAllPayments()`, `api.listSchedule()` — and
+folds them through the pure `buildReport` aggregator (`src/lib/reports.ts`). It
+renders a period bar (quick presets *this month / this year / all* + two
+`DatePicker`s), a four-KPI row (period sales & collections, plus a current
+outstanding & overdue *snapshot*), and two sortable breakdown cards (month-by-
+month and per-client). A CSV export dumps the summary + both breakdowns.
+
+Added integration and E2E coverage and **executed all suites** (unit,
+integration, E2E) — the user requested execution. All green.
+
+### Test cases — RUN
+
+Unit — `src/lib/reports.test.ts` (9 cases, `npm test`): **45/45 passed** overall.
+- Period scoping is inclusive on both bounds; empty bounds mean unbounded.
+- Outstanding/overdue read the whole schedule (snapshot), independent of the period; overdue counts only past-due, still-owed tranches.
+- Month breakdown is continuous and zero-fills quiet months; clients rank by collections then sales; empty dataset yields no month/client rows.
+
+Integration — `tests/integration/reports.integration.test.ts` (11 cases, `npm run test:integration`): **30/30 passed** overall.
+- All-time report reconciles with the dashboard on sales count/total, collected total, outstanding, and overdue count; overdue money matches the impayés grand total.
+- Internal consistency: month rows and client rows each sum back to the headline sales/collected totals; the client set equals the clients that have purchases; each client's collected total matches its `listPaymentsForClient` ledger.
+- Period window: a pre-history window zeroes sales/collections but leaves the outstanding/overdue snapshot intact; narrowing the window is monotonic and matches a hand-rolled filter.
+- Mutations propagate: a full payment on an overdue tranche raises collected and lowers outstanding + overdue by the amount (count −1); creating a purchase adds one sale to the totals, its month bucket, and its client row.
+
+E2E — `tests/e2e/run.mjs` (5 new Rapports cases, `npm run test:e2e`): **25/25 passed**, no browser console errors.
+- Four KPI cards render; default preset is *Tout*; all-time sales total = 14 700 (the 8 seeded purchases) and the sub mentions 8 purchases.
+- The *Ce mois-ci* preset narrows sales to the single today-dated seed purchase (900).
+- Monthly and per-client breakdown tables render (6 client rows — every seeded client has a purchase).
+- CSV export button present while data exists.
+- Sorting the client table by *Encaissé* reorders ascending then descending.
+
+### Issues found
+
+None. One defect was found and fixed **in the test code** during the pass (the
+mutation test dereferenced the report helper's wrapper object directly instead
+of its `.report` field); no product defect. `vue-tsc --noEmit` is clean.
+
+### Recommendations
+
+- Sales/collections are period-bound while outstanding/overdue are a live
+  snapshot — the KPI subtitles label this ("Owed to date"), but it is worth
+  keeping in mind when reading a historical window: those two tiles always
+  reflect *now*, not the selected period.
+- The month span is derived from the data's own activity, so a wide preset over
+  a sparse dataset can show many zero-filled months. Acceptable today; if data
+  grows, consider clamping the breakdown to the selected window.
+- Export is CSV only; a per-purchase or PDF export was out of scope for this
+  pass and remains a possible follow-up.
+
+---
+
 ## 2026-07-22 — Feature QA: Alertes (alerts center) page
 
 ### Summary

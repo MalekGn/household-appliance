@@ -280,8 +280,41 @@
   },
   "rapports": {
     "title": "Reports",
-    "comingSoon": "Detailed reports are coming soon.",
-    "description": "This page will offer exportable sales, collection and overdue summaries."
+    "subtitle": "Sales, collections and overdue synthesis over the selected period",
+    "export": "Export report",
+    "empty": "Nothing to report yet",
+    "emptyHint": "Record purchases and payments and the reports will populate.",
+    "noActivity": "No activity in this period",
+    "monthly": "Monthly breakdown",
+    "byClient": "By client",
+    "period": {
+      "month": "This month",
+      "year": "This year",
+      "all": "All",
+      "allLabel": "All time"
+    },
+    "kpi": {
+      "sales": "Sales",
+      "salesSub": "{n} purchase | {n} purchases",
+      "collected": "Collected",
+      "collectedSub": "{n} payment | {n} payments",
+      "outstanding": "Outstanding",
+      "outstandingSub": "Owed to date",
+      "overdue": "Overdue",
+      "overdueSub": "{n} installment | {n} installments"
+    },
+    "columns": {
+      "month": "Month",
+      "client": "Client",
+      "sales": "Sales",
+      "collected": "Collected"
+    },
+    "csv": {
+      "period": "Period",
+      "metric": "Metric",
+      "count": "Count",
+      "amount": "Amount"
+    }
   },
   "settings": {
     "title": "Settings",

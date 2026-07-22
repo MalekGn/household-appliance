@@ -554,6 +554,100 @@ test("alertes: a row links through to its purchase detail", async (page) => {
   assertEqual(await page.locator("h1.page-title").innerText(), reference, "navigated to the purchase detail");
 });
 
+// --- Rapports (reports) ------------------------------------------------------
+// The page loads api.listPurchases() + listAllPayments() + listSchedule() and
+// folds them through the pure buildReport aggregator. A period bar (quick
+// presets `.tab` + two DatePickers) scopes sales/collections; the KPI row
+// (`.kpis .kpi`, in DOM order Sales / Collected / Outstanding / Overdue) shows
+// the totals, and two breakdown cards under `.grid` (monthly + per-client,
+// both sortable) sit below. The default preset is "Tout" (all time).
+
+test("rapports: renders four KPI cards with all-time totals by default", async (page) => {
+  await open(page, "/rapports");
+  await page.locator(".kpis .kpi").first().waitFor({ timeout: 10000 });
+  assertEqual(await page.locator(".kpis .kpi").count(), 4, "four KPI cards");
+
+  // Default period preset is "Tout" (unbounded / all time).
+  await page.locator(".tab.tab--active", { hasText: "Tout" }).waitFor({ timeout: 5000 });
+
+  // Seed: 8 purchases totalling 2400+1800+3200+1200+2100+1500+900+1600 = 14700.
+  const salesCard = page.locator(".kpis .kpi", { hasText: "Ventes" });
+  const digits = (await salesCard.locator(".kpi-value").innerText()).replace(/[^\d]/g, "");
+  assertEqual(digits, "14700", "all-time sales total (sum of the 8 seeded purchases)");
+  const sub = await salesCard.locator(".kpi-sub").innerText();
+  assert(/8/.test(sub), `sales sub should mention the 8 purchases, got: ${sub}`);
+});
+
+test("rapports: the 'this month' preset narrows sales to the current month", async (page) => {
+  await open(page, "/rapports");
+  await page.locator(".kpis .kpi").first().waitFor({ timeout: 10000 });
+
+  // Only the monthsAgo:0 seed purchase ("Four électrique", 900) is dated today;
+  // every other seeded purchase is at least a month old. So restricting to the
+  // current month must leave exactly that single 900 sale.
+  await page.locator(".tabs .tab", { hasText: "Ce mois-ci" }).click();
+  await page.locator(".tab.tab--active", { hasText: "Ce mois-ci" }).waitFor({ timeout: 5000 });
+
+  await page.waitForFunction(
+    () => {
+      const card = Array.from(document.querySelectorAll(".kpis .kpi")).find((el) =>
+        el.textContent?.includes("Ventes"),
+      );
+      const v = card?.querySelector(".kpi-value")?.textContent?.replace(/[^\d]/g, "");
+      return v === "900";
+    },
+    undefined,
+    { timeout: 5000 },
+  );
+  const salesCard = page.locator(".kpis .kpi", { hasText: "Ventes" });
+  const digits = (await salesCard.locator(".kpi-value").innerText()).replace(/[^\d]/g, "");
+  assertEqual(digits, "900", "current-month sales (only the today-dated purchase)");
+});
+
+test("rapports: monthly and per-client breakdown tables render", async (page) => {
+  await open(page, "/rapports");
+  await page.locator(".kpis .kpi").first().waitFor({ timeout: 10000 });
+
+  const monthly = page.locator(".grid .card", { hasText: "Détail mensuel" });
+  const byClient = page.locator(".grid .card", { hasText: "Par client" });
+  await monthly.locator("table.table tbody tr").first().waitFor({ timeout: 5000 });
+  await byClient.locator("table.table tbody tr").first().waitFor({ timeout: 5000 });
+
+  assert((await monthly.locator("tbody tr").count()) >= 1, "monthly breakdown has at least one row");
+  // All 6 seeded clients have at least one purchase, so all appear all-time.
+  assertEqual(await byClient.locator("tbody tr").count(), 6, "one row per client with activity");
+});
+
+test("rapports: a CSV export button is available when data exists", async (page) => {
+  await open(page, "/rapports");
+  await page.locator(".kpis .kpi").first().waitFor({ timeout: 10000 });
+  const exportBtn = page.getByRole("button", { name: /Exporter/ });
+  await exportBtn.waitFor({ timeout: 5000 });
+  assertEqual(await exportBtn.count(), 1, "one export button while data exists");
+});
+
+test("rapports: sorting the client table by collected reorders the rows", async (page) => {
+  await open(page, "/rapports");
+  const byClient = page.locator(".grid .card", { hasText: "Par client" });
+  await byClient.locator("table.table tbody tr").first().waitFor({ timeout: 10000 });
+
+  const num = (s) => Number(s.replace(/[^\d]/g, ""));
+  // "Encaissé" is the 3rd column (nth-child(3)) of the per-client table.
+  const collectedCells = () => byClient.locator("tbody tr td:nth-child(3)").allInnerTexts();
+
+  // Default ranking is collected-descending; clicking the header sorts ascending.
+  await byClient.locator("thead th", { hasText: "Encaissé" }).click();
+  await page.waitForTimeout(50);
+  const asc = (await collectedCells()).map(num);
+  assertEqual(JSON.stringify(asc), JSON.stringify([...asc].sort((a, b) => a - b)), "ascending by collected");
+
+  // Click again to flip to descending.
+  await byClient.locator("thead th", { hasText: "Encaissé" }).click();
+  await page.waitForTimeout(50);
+  const desc = (await collectedCells()).map(num);
+  assertEqual(JSON.stringify(desc), JSON.stringify([...desc].sort((a, b) => b - a)), "descending by collected");
+});
+
 // --- runner ------------------------------------------------------------------
 
 async function main() {

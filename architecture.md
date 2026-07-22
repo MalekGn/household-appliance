@@ -52,6 +52,10 @@ direct database or filesystem access.
   (reference/client/amount/date bar).
 - **`lib/finance.ts`** — pure, unit-tested installment/payment math (the TS
   mirror of `db.rs`), reused by the browser mock.
+- **`lib/alerts.ts`** / **`lib/reports.ts`** — pure, unit-tested aggregation
+  over the loaded data: `alerts.ts` classifies the schedule for the Alertes
+  page; `reports.ts` builds the period-scoped Rapports synthesis (sales,
+  collections, outstanding/overdue snapshot, month and client breakdowns).
 - **`i18n/`** + **`locales/{ar,fr,en}.json`** — all UI strings; RTL applied via
   `dir="rtl"` on `<html>` for Arabic.
 - **`api/`** — `index.ts` is the single typed gateway. It calls Tauri `invoke`

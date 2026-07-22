@@ -280,8 +280,41 @@
   },
   "rapports": {
     "title": "Rapports",
-    "comingSoon": "Les rapports détaillés arrivent bientôt.",
-    "description": "Cette page proposera des synthèses de ventes, d'encaissements et d'impayés exportables."
+    "subtitle": "Synthèse des ventes, encaissements et impayés sur la période choisie",
+    "export": "Exporter le rapport",
+    "empty": "Aucune donnée à présenter",
+    "emptyHint": "Enregistrez des achats et des paiements pour voir apparaître les rapports.",
+    "noActivity": "Aucune activité sur la période",
+    "monthly": "Détail mensuel",
+    "byClient": "Par client",
+    "period": {
+      "month": "Ce mois-ci",
+      "year": "Cette année",
+      "all": "Tout",
+      "allLabel": "Toute la période"
+    },
+    "kpi": {
+      "sales": "Ventes",
+      "salesSub": "{n} achat | {n} achats",
+      "collected": "Encaissé",
+      "collectedSub": "{n} paiement | {n} paiements",
+      "outstanding": "Encours",
+      "outstandingSub": "Dû à ce jour",
+      "overdue": "Impayés",
+      "overdueSub": "{n} tranche | {n} tranches"
+    },
+    "columns": {
+      "month": "Mois",
+      "client": "Client",
+      "sales": "Ventes",
+      "collected": "Encaissé"
+    },
+    "csv": {
+      "period": "Période",
+      "metric": "Indicateur",
+      "count": "Nombre",
+      "amount": "Montant"
+    }
   },
   "settings": {
     "title": "Paramètres",
