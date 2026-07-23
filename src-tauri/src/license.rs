@@ -34,6 +34,29 @@ pub const LICENSE_FILENAME: &str = "license.psl";
 /// detect a system clock wound backwards to dodge expiry (anti-rollback).
 pub const LAST_SEEN_KEY: &str = "license_last_seen";
 
+/// Env var that, in a **debug build only**, skips the license gate so the app
+/// opens without a signed license. Set to `1`/`true` during development
+/// (e.g. `tauri dev`). Gated on `debug_assertions`, so release bundles ignore
+/// it entirely — it can never be a production bypass.
+pub const BYPASS_ENV: &str = "PAYMENT_SCHEDULE_LICENSE_BYPASS";
+
+/// Whether the dev license bypass is active. True only when this is a debug
+/// build **and** the override env var is truthy (`1`/`true`).
+pub fn bypass_enabled() -> bool {
+    bypass_decision(
+        cfg!(debug_assertions),
+        std::env::var(BYPASS_ENV).ok().as_deref(),
+    )
+}
+
+/// Pure gate for the dev bypass, split from the compile-time flag and the
+/// environment lookup so the policy can be unit-tested deterministically.
+/// Uses `&&` (explicit opt-in) — unlike seeding's `||`, a debug build alone
+/// does not skip the gate; the env var must be set too.
+fn bypass_decision(debug_build: bool, bypass_env: Option<&str>) -> bool {
+    debug_build && matches!(bypass_env, Some("1") | Some("true"))
+}
+
 /// Signed payload of a license. **Field order is part of the signing contract**
 /// — the signature is computed over `serde_json::to_vec(&payload)`, so this
 /// struct must stay byte-for-byte identical (names, order, types) to the one in
@@ -356,6 +379,52 @@ mod tests {
         let contents = make_license(&signing_key(), &sample_payload());
         let (status, _) = verify_license(&contents, MACHINE, day("2026-06-01"), None);
         assert_eq!(status, LicenseStatus::BadSignature);
+    }
+
+    #[test]
+    fn bypass_off_in_release_regardless_of_env() {
+        // In a release build (`debug_assertions` off) the env var is ignored,
+        // so the gate can never be skipped on a delivered app.
+        assert!(!bypass_decision(false, Some("1")));
+        assert!(!bypass_decision(false, Some("true")));
+        assert!(!bypass_decision(false, None));
+    }
+
+    #[test]
+    fn bypass_requires_explicit_truthy_env_in_debug() {
+        // Debug build: only an explicit truthy value opts in.
+        assert!(bypass_decision(true, Some("1")));
+        assert!(bypass_decision(true, Some("true")));
+        assert!(!bypass_decision(true, None));
+        assert!(!bypass_decision(true, Some("0")));
+        assert!(!bypass_decision(true, Some("yes")));
+    }
+
+    /// Integration seam between `bypass_enabled()` and the real process
+    /// environment: proves the public entry point reads the exact `BYPASS_ENV`
+    /// name and composes it with the build flag (a typo in the env-var name
+    /// would slip past the pure `bypass_decision` tests but fail here). The test
+    /// binary is compiled with `debug_assertions`, so `cfg!` is `true` and the
+    /// env var alone decides. Runs its mutations sequentially within this one
+    /// body, and no other test touches `BYPASS_ENV`, so it is race-safe.
+    #[test]
+    fn bypass_enabled_reads_the_real_env_var() {
+        let original = std::env::var(BYPASS_ENV).ok();
+
+        std::env::set_var(BYPASS_ENV, "1");
+        assert!(bypass_enabled(), "truthy env in a debug build enables the bypass");
+
+        std::env::set_var(BYPASS_ENV, "0");
+        assert!(!bypass_enabled(), "an explicit falsy value does not enable it");
+
+        std::env::remove_var(BYPASS_ENV);
+        assert!(!bypass_enabled(), "an unset env var leaves the gate enforced");
+
+        // Restore whatever the surrounding environment had.
+        match original {
+            Some(v) => std::env::set_var(BYPASS_ENV, v),
+            None => std::env::remove_var(BYPASS_ENV),
+        }
     }
 
     #[test]

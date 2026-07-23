@@ -6,6 +6,85 @@ Issues found → Recommendations**. See `CLAUDE.md` (Phase 3: QA) for the workfl
 
 ---
 
+## 2026-07-23 — Feature QA: Dev-only license-gate bypass env var
+
+### Summary
+
+Added `PAYMENT_SCHEDULE_LICENSE_BYPASS` — a debug-build-only env var that skips
+the Rust license gate during development, inert in release bundles. QA verifies
+the enable/disable matrix and, critically, that the bypass cannot open the gate
+on a delivered (release) build.
+
+**Layering note (why no browser tests were added):** the integration
+(`tests/integration/**`) and E2E (`tests/e2e/`) suites run in a plain browser
+where `isTauri()` is false, so they exercise the **mock** gate (`src/api/mock.ts`,
+`?mockLicense=…`) and never touch the Rust env var. Writing JS tests for this
+feature would assert behavior that layer does not have, which the QA workflow
+forbids ("no test-writing based on assumed behavior"). The real coverage
+therefore lives in Rust; the delivered-build guarantee is additionally proven by
+a test rather than only by a manual build.
+
+### Test cases — RUN (`cd src-tauri && cargo test`, 19 passed)
+
+`src-tauri/src/license.rs`
+- `bypass_off_in_release_regardless_of_env` — `bypass_decision(false, …)` is
+  `false` for `"1"`, `"true"`, and `None`. This is the delivered-build guarantee:
+  a release binary (`debug_assertions` off) ignores the env var entirely.
+- `bypass_requires_explicit_truthy_env_in_debug` — in a debug build only `"1"` /
+  `"true"` opt in; `None`, `"0"`, `"yes"` keep the gate enforced (explicit opt-in,
+  `&&` semantics).
+- `bypass_enabled_reads_the_real_env_var` — integration seam: the public
+  `bypass_enabled()` reads the exact `BYPASS_ENV` name from the real process
+  environment and composes it with the build flag (set `"1"` → enabled; `"0"` →
+  disabled; unset → enforced). Catches an env-var-name typo the pure tests can't.
+- Regression: all pre-existing license tests still pass, incl.
+  `embedded_placeholder_key_fails_closed` (real crypto path untouched).
+
+### Test cases — E2E, written as manual repro steps, NOT run (require a Tauri/release build)
+
+These need a compiled desktop app, so they are documented for manual execution
+rather than automated (no headless Tauri harness in this project):
+1. **Real gate intact (dev):** `npm run tauri dev` with no env → activation lock
+   screen appears (placeholder key rejects everything).
+2. **Bypass works (dev):** `PAYMENT_SCHEDULE_LICENSE_BYPASS=1 npm run tauri dev` →
+   app opens straight to the dashboard; stderr logs `⚠ License gate BYPASSED …`.
+3. **Inert in release:** build a release bundle (`npm run tauri build`) and launch
+   it with `PAYMENT_SCHEDULE_LICENSE_BYPASS=1` → still shows the lock screen.
+   (Code-level proof: `bypass_off_in_release_regardless_of_env`.)
+
+### Regression suites — RUN (user-requested full execution)
+
+- `npm run test:integration` → **5 files, 35 tests passed** (incl.
+  `license-gate.integration.test.ts`, the browser mock gate). No regressions from
+  the Rust change (expected — different layer).
+- `npm run test:e2e` → **28/28 passed**, including the three licensing E2E cases
+  (lock shown when invalid, import→unlock, expired stays locked). Confirms the
+  frontend mount/lock behavior the bypass ultimately drives is intact.
+
+### Issues found
+
+None. The enable/disable matrix behaves as designed and the release-inert
+guarantee holds at the unit level; the full integration + E2E regression suites
+are green.
+
+### Edge cases / risks
+
+- The bypass branch is compiled into the release binary but made unreachable at
+  runtime by `cfg!(debug_assertions)` (consistent with the existing seeding
+  pattern in `db.rs`). Residual, not a defect; a `#[cfg(debug_assertions)]`
+  compile-out would remove the branch entirely if stronger assurance is wanted.
+- `bypass_enabled_reads_the_real_env_var` mutates process env within a single
+  test body and restores it; safe because no other test references `BYPASS_ENV`.
+
+### Recommendations
+
+- Run the manual E2E steps above once against a real release bundle before the
+  next delivery to confirm the release-inert behavior end-to-end.
+- Optional: adopt the `#[cfg(debug_assertions)]` compile-out if audit policy
+  requires the bypass code to be physically absent from shipped binaries.
+
+---
+
 ## 2026-07-22 — Feature QA: Licensing / certification gate
 
 ### Summary

@@ -222,6 +222,10 @@ as usual (`npm run tauri build`).
   setting the clock earlier than the latest date the app has seen is rejected.
 - The lock is enforced in the Rust core (the SQLite DB is not exposed to commands
   without a valid license); the frontend screen is only the UX around it.
+- **Dev bypass:** set `PAYMENT_SCHEDULE_LICENSE_BYPASS=1` (or `true`) to skip the
+  gate during development, e.g. `PAYMENT_SCHEDULE_LICENSE_BYPASS=1 npm run tauri dev`.
+  It is honored **only in debug builds** — release bundles (`tauri build`) ignore
+  the variable entirely, so it can never bypass the gate on a delivered app.
 
 ---
 

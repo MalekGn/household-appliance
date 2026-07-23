@@ -33,16 +33,28 @@ pub fn run() {
             let (status, payload) = {
                 let conn = database.conn.lock().unwrap();
                 let last_seen = commands::get_last_seen(&conn);
-                let lic_path = data_dir.join(license::LICENSE_FILENAME);
-                let result = match std::fs::read_to_string(&lic_path) {
-                    Ok(contents) => {
-                        license::verify_license(&contents, &machine_id, today, last_seen)
-                    }
-                    Err(_) => (license::LicenseStatus::Missing, None),
-                };
-                // Advance the watermark so a later clock rollback is detectable.
+                // Advance the watermark so a later clock rollback is detectable,
+                // regardless of which gate path we take below.
                 let _ = commands::record_last_seen(&conn, today);
-                result
+
+                if license::bypass_enabled() {
+                    // Dev builds only (see `license::bypass_enabled`); the env
+                    // var is inert in release bundles, so this can never open
+                    // the gate on a delivered app.
+                    eprintln!(
+                        "\u{26a0} License gate BYPASSED via {} (debug build only).",
+                        license::BYPASS_ENV
+                    );
+                    (license::LicenseStatus::Valid, None)
+                } else {
+                    let lic_path = data_dir.join(license::LICENSE_FILENAME);
+                    match std::fs::read_to_string(&lic_path) {
+                        Ok(contents) => {
+                            license::verify_license(&contents, &machine_id, today, last_seen)
+                        }
+                        Err(_) => (license::LicenseStatus::Missing, None),
+                    }
+                }
             };
             let dto = license::LicenseStatusDto::build(status, &machine_id, payload.as_ref());
             let valid = status.is_valid();
