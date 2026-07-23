@@ -1,0 +1,14 @@
+/home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/deps/serde-3cf61f0d72fdcbe9.d: /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/build/serde-5fd3425537fad53b/out/private.rs
+
+/home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/deps/libserde-3cf61f0d72fdcbe9.rlib: /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/build/serde-5fd3425537fad53b/out/private.rs
+
+/home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/deps/libserde-3cf61f0d72fdcbe9.rmeta: /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/build/serde-5fd3425537fad53b/out/private.rs
+
+/home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs:
+/home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs:
+/home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs:
+/home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs:
+/home/malek/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs:
+/home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/build/serde-5fd3425537fad53b/out/private.rs:
+
+# env-dep:OUT_DIR=/home/malek/workspace/projects/household-appliance/tools/licensegen/target/debug/build/serde-5fd3425537fad53b/out
