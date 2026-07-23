@@ -3,6 +3,7 @@
 //! serde-serializable models. Errors are surfaced as `String` (shown as a
 //! localized toast on the frontend).
 
+use chrono::NaiveDate;
 use rusqlite::{params, Connection, OptionalExtension};
 use tauri::State;
 
@@ -10,6 +11,7 @@ use crate::db::{
     add_interval, installment_status, parse_date, purchase_status, split_amounts, today, Db,
     DbResult,
 };
+use crate::license::{self, LicenseState, LicenseStatusDto, LAST_SEEN_KEY};
 use crate::models::*;
 
 // ===========================================================================
@@ -946,6 +948,78 @@ pub fn clear_logo(db: State<Db>) -> DbResult<Settings> {
 #[tauri::command]
 pub fn save_text_file(path: String, contents: String) -> DbResult<()> {
     std::fs::write(&path, contents).map_err(|e| format!("Failed to write {path}: {e}"))
+}
+
+// ===========================================================================
+// Licensing / certification gate
+// ===========================================================================
+
+/// The newest date the app has recorded, used for anti-clock-rollback. `None`
+/// on a fresh install (no watermark yet).
+pub fn get_last_seen(conn: &Connection) -> Option<NaiveDate> {
+    let raw = get_setting(conn, LAST_SEEN_KEY, "");
+    if raw.is_empty() {
+        None
+    } else {
+        parse_date(&raw).ok()
+    }
+}
+
+/// Advance the anti-rollback watermark to `today` when it moves the date
+/// forward. Called once at startup after the license has been evaluated.
+pub fn record_last_seen(conn: &Connection, today: NaiveDate) -> DbResult<()> {
+    if get_last_seen(conn).map_or(true, |seen| today > seen) {
+        put_setting(conn, LAST_SEEN_KEY, &today.to_string())?;
+    }
+    Ok(())
+}
+
+/// The license status decided once at startup (see `lib.rs` setup). The
+/// frontend polls this to gate the whole UI.
+#[tauri::command]
+pub fn get_license_status(state: State<LicenseState>) -> LicenseStatusDto {
+    state.dto.clone()
+}
+
+/// This machine's fingerprint, shown on the activation screen so the operator
+/// can request a license bound to it.
+#[tauri::command]
+pub fn get_machine_fingerprint() -> String {
+    license::machine_fingerprint()
+}
+
+/// Validate a candidate license file (picked via the native dialog) and, when
+/// it is authentic for THIS machine, install it into the app-data directory.
+///
+/// Returns the resulting status. The rollback watermark is *not* consulted here
+/// (the authoritative check re-runs at startup); the frontend reloads the app
+/// after a status that unlocks, so `setup()` re-evaluates and opens the DB.
+///
+/// This command deliberately does not take `State<Db>` so it stays callable
+/// while the app is locked (DB unmanaged).
+#[tauri::command]
+pub fn import_license(
+    app: tauri::AppHandle,
+    source_path: String,
+) -> DbResult<LicenseStatusDto> {
+    use tauri::Manager;
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+
+    let contents = std::fs::read_to_string(&source_path)
+        .map_err(|e| format!("Cannot read the selected file: {e}"))?;
+
+    let machine_id = license::machine_fingerprint();
+    let (status, payload) = license::verify_license(&contents, &machine_id, today(), None);
+
+    // Only persist a genuinely-signed license for this machine, so a stray or
+    // forged file can never clobber a good one already in place.
+    if status.is_authentic() {
+        let dest = data_dir.join(license::LICENSE_FILENAME);
+        std::fs::write(&dest, &contents).map_err(|e| e.to_string())?;
+    }
+
+    Ok(LicenseStatusDto::build(status, &machine_id, payload.as_ref()))
 }
 
 #[cfg(test)]

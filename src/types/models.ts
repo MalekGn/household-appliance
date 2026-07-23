@@ -217,3 +217,26 @@ export interface SettingsPatch {
   shopInfo?: string;
   alertSoonDays?: number;
 }
+
+// Licensing / certification gate. Mirrors src-tauri/src/license.rs.
+export type LicenseStatusCode =
+  | "valid"
+  | "missing"
+  | "malformed"
+  | "bad_signature"
+  | "wrong_machine"
+  | "not_yet_valid"
+  | "expired"
+  | "clock_tampered";
+
+export interface LicenseStatusDto {
+  status: LicenseStatusCode;
+  /** True only when `status === "valid"`; the app unlocks on this. */
+  valid: boolean;
+  /** Present when the file is authentic (valid / expired / not-yet-valid). */
+  licensee: string | null;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  /** This machine's fingerprint, shown so the operator can request a license. */
+  machineId: string;
+}

@@ -648,6 +648,45 @@ test("rapports: sorting the client table by collected reorders the rows", async 
   assertEqual(JSON.stringify(desc), JSON.stringify([...desc].sort((a, b) => b - a)), "descending by collected");
 });
 
+// --- Licensing (activation gate) ---------------------------------------------
+// The desktop app enforces licensing in Rust; in the browser the mock backend
+// simulates it from `?mockLicense=<status>` plus a localStorage unlock flag, so
+// the full lock → import → unlock flow is drivable end-to-end. Each test runs in
+// a fresh browser context, so the unlock flag never leaks between scenarios.
+
+/** Navigate to the activation lock (bypassing the `open()` app-shell wait). */
+async function openLock(page, status) {
+  await page.goto(`${BASE}/?mockLicense=${status}`, { waitUntil: "networkidle" });
+  await page.locator('[data-testid="license-lock"]').waitFor({ state: "visible", timeout: 10000 });
+}
+
+test("license: an invalid certification shows the activation lock, not the app", async (page) => {
+  await openLock(page, "missing");
+  // The app shell must NOT be mounted behind the lock — no data screen reachable.
+  assertEqual(await page.locator(".app-shell").count(), 0, "app shell is not mounted while locked");
+  assertEqual(await page.locator(".nav-item").count(), 0, "no sidebar nav while locked");
+  // The machine fingerprint is shown so the operator can request a license.
+  const machineId = (await page.locator('[data-testid="license-machine-id"]').innerText()).trim();
+  assert(machineId.length > 0, "machine id is displayed on the lock screen");
+});
+
+test("license: importing a valid certification unlocks the app", async (page) => {
+  await openLock(page, "missing");
+
+  // Import → the mock activates and the screen triggers a reload into the app.
+  await page.locator('[data-testid="license-import"]').click();
+  await page.locator(".app-shell").waitFor({ state: "visible", timeout: 10000 });
+  assertEqual(await page.locator(".nav-item").count(), 9, "full sidebar renders after activation");
+  assertEqual(await page.locator('[data-testid="license-lock"]').count(), 0, "lock screen dismissed");
+});
+
+test("license: an expired certification stays locked with an expiry message", async (page) => {
+  await openLock(page, "expired");
+  assertEqual(await page.locator(".app-shell").count(), 0, "expired license keeps the app locked");
+  const lead = (await page.locator('[data-testid="license-lock"] .lock-lead').innerText()).trim();
+  assert(/expir/i.test(lead), `expired copy should mention expiry, got: ${lead}`);
+});
+
 // --- runner ------------------------------------------------------------------
 
 async function main() {

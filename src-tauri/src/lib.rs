@@ -4,6 +4,7 @@
 
 mod commands;
 mod db;
+mod license;
 mod models;
 mod seed;
 
@@ -21,7 +22,34 @@ pub fn run() {
             let db_path = data_dir.join("payment_schedule.db");
             let database = db::Db::open(&db_path)
                 .map_err(|e| format!("Failed to open database: {e}"))?;
-            app.manage(database);
+
+            // License (certification) gate. The DB is opened above so we can
+            // read/advance the anti-rollback watermark, but it is only *managed*
+            // — i.e. exposed to the data commands — when the license is valid.
+            // Without a valid license the frontend shows the activation screen
+            // and every data command fails (its `State<Db>` is absent).
+            let machine_id = license::machine_fingerprint();
+            let today = db::today();
+            let (status, payload) = {
+                let conn = database.conn.lock().unwrap();
+                let last_seen = commands::get_last_seen(&conn);
+                let lic_path = data_dir.join(license::LICENSE_FILENAME);
+                let result = match std::fs::read_to_string(&lic_path) {
+                    Ok(contents) => {
+                        license::verify_license(&contents, &machine_id, today, last_seen)
+                    }
+                    Err(_) => (license::LicenseStatus::Missing, None),
+                };
+                // Advance the watermark so a later clock rollback is detectable.
+                let _ = commands::record_last_seen(&conn, today);
+                result
+            };
+            let dto = license::LicenseStatusDto::build(status, &machine_id, payload.as_ref());
+            let valid = status.is_valid();
+            app.manage(license::LicenseState { dto });
+            if valid {
+                app.manage(database);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -52,6 +80,10 @@ pub fn run() {
             commands::clear_logo,
             // exports
             commands::save_text_file,
+            // licensing / certification
+            commands::get_license_status,
+            commands::get_machine_fingerprint,
+            commands::import_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running paymentSchedule");

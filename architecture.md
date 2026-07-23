@@ -19,17 +19,25 @@ direct database or filesystem access.
                     │  IPC (invoke)
 ┌───────────────────▼───────────────────────────┐
 │               Core process (Rust)              │
-│  lib.rs ── commands.rs ── db.rs ── seed.rs     │
+│  lib.rs ─ commands.rs ─ db.rs ─ seed.rs        │
+│               license.rs (gate)                │
 │                 │                              │
 │    rusqlite  →  payment_schedule.db (SQLite)   │
-│         app-data dir  →  logo.<ext>            │
+│    app-data dir  →  logo.<ext>, license.psl    │
 └────────────────────────────────────────────────┘
 ```
 
+At startup the core verifies the license (`license.rs`) and **only manages the
+`Db` state when it is valid** — so without a valid certification every data
+command fails and the WebView is mounted straight onto the activation lock
+(`src/views/LicenseView.vue`) instead of the app shell.
+
 ## Frontend (`src/`)
 
-- **`main.ts`** — bootstraps Pinia, vue-i18n, vue-router; loads settings and
-  applies locale/direction before mount.
+- **`main.ts`** — bootstraps Pinia, vue-i18n, vue-router; loads settings and the
+  license status, applies locale/direction, then mounts either the app shell
+  (`App.vue`) or, when the license is invalid, only the activation lock
+  (`LicenseView.vue`) — so no data screen is reachable behind the gate.
 - **`App.vue` + `components/layout/`** — the shell: `AppSidebar`, `AppHeader`,
   content area, and toasts.
 - **`views/`** — one component per route (Dashboard, Achats, PurchaseDetail,
@@ -74,6 +82,11 @@ direct database or filesystem access.
   the JS layer needs no broad `fs` write scope.
 - **`db.rs`** — connection wrapper (`Mutex<Connection>`), schema migration,
   and shared date/status/split helpers.
+- **`license.rs`** — the certification gate: an embedded Ed25519 public key, the
+  machine fingerprint (`sha256` of the OS machine-uid), and `verify_license`
+  (signature → machine binding → clock-rollback → validity window). `lib.rs`
+  calls it in `setup()`; `commands.rs` exposes `get_license_status`,
+  `get_machine_fingerprint`, and `import_license`. See "Licensing" below.
 - **`models.rs`** — serde structs (camelCase payloads) shared with the frontend.
 - **`seed.rs`** — first-run Tunisian demo data.
 
@@ -102,3 +115,32 @@ setting (key/value)
 - **Design tokens** (`src/style.css` CSS variables) extracted from the reference
   mockup drive every screen — including the mirrored Arabic RTL layout — for
   visual consistency.
+
+## Licensing (certification gate)
+
+The app is licensed per machine with a due date. Trust is anchored in an
+**Ed25519 signature**, not in where the file is stored (the app-data dir is
+user-writable and cannot be trusted on its own):
+
+- The **private key never ships**. Licenses are minted offline by the
+  `tools/licensegen` CLI (a standalone crate, deliberately outside the app's
+  Cargo build). The matching **public key is a compile-time constant** in
+  `license.rs` (`LICENSE_PUBLIC_KEY`) — replace the placeholder before shipping.
+- A **license file** (`license.psl`, JSON) holds a payload
+  (`license_id`, `licensee`, `machine_id_hash`, `issued_at`, `expires_at`) plus a
+  base64 signature over the payload's canonical JSON (`serde_json::to_vec`, declared
+  field order — the tool and app share the struct definition byte-for-byte).
+- **Machine binding**: the license is bound to `sha256(domain || machine-uid)`;
+  the raw OS id is never exposed, only the hash (shown on the lock screen).
+- **Enforcement is a hard gate**: `lib.rs` opens the DB (to read/advance the
+  anti-rollback watermark in `setting.license_last_seen`) but only
+  `app.manage(Db)` when the status is `Valid`. Otherwise the DB is unmanaged, so
+  every data command errors, and the frontend mounts the lock screen.
+- **Anti-clock-rollback**: startup records the newest date seen; a system clock
+  earlier than that watermark reports `ClockTampered`.
+- **Activation flow**: lock screen shows the machine fingerprint → operator runs
+  `licensegen issue --machine-id <hash> --expires <date>` → customer imports the
+  `.psl` via the native dialog (`import_license` verifies + stores it) → the app
+  reloads so `setup()` re-runs and, now valid, manages the DB.
+
+The frontend gate is UX; the real protection is the Rust signature check.

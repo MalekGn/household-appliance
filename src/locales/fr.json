@@ -374,5 +374,27 @@
     "home": "Retour au tableau de bord",
     "purchaseMissing": "Cet achat n'existe pas ou a été supprimé.",
     "clientMissing": "Ce client n'existe pas ou a été supprimé."
+  },
+  "license": {
+    "title": "Activation requise",
+    "activated": "Licence activée. Redémarrage…",
+    "licensee": "Titulaire",
+    "expiresAt": "Expire le",
+    "machineId": "Identifiant machine",
+    "copy": "Copier",
+    "copied": "Copié",
+    "hint": "Communiquez cet identifiant à votre fournisseur pour obtenir votre fichier de licence, puis importez-le ci-dessous.",
+    "import": "Importer un fichier de licence",
+    "importing": "Importation…",
+    "status": {
+      "valid": "Licence valide.",
+      "missing": "Aucune licence installée. Importez votre fichier de licence pour activer l'application.",
+      "malformed": "Le fichier de licence est illisible ou endommagé.",
+      "bad_signature": "Signature de licence invalide. Ce fichier n'est pas authentique.",
+      "wrong_machine": "Cette licence a été émise pour une autre machine.",
+      "not_yet_valid": "Cette licence n'est pas encore valide.",
+      "expired": "Cette licence a expiré. Contactez votre fournisseur pour la renouveler.",
+      "clock_tampered": "L'horloge du système semble avoir été modifiée. Corrigez la date pour continuer."
+    }
   }
 }

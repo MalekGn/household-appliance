@@ -374,5 +374,27 @@
     "home": "Back to dashboard",
     "purchaseMissing": "This purchase doesn't exist or has been deleted.",
     "clientMissing": "This client doesn't exist or has been deleted."
+  },
+  "license": {
+    "title": "Activation required",
+    "activated": "License activated. Restarting…",
+    "licensee": "Licensed to",
+    "expiresAt": "Expires on",
+    "machineId": "Machine ID",
+    "copy": "Copy",
+    "copied": "Copied",
+    "hint": "Send this ID to your provider to receive your license file, then import it below.",
+    "import": "Import license file",
+    "importing": "Importing…",
+    "status": {
+      "valid": "License valid.",
+      "missing": "No license installed. Import your license file to activate the app.",
+      "malformed": "The license file is unreadable or damaged.",
+      "bad_signature": "Invalid license signature. This file is not authentic.",
+      "wrong_machine": "This license was issued for a different machine.",
+      "not_yet_valid": "This license is not valid yet.",
+      "expired": "This license has expired. Contact your provider to renew it.",
+      "clock_tampered": "The system clock appears to have been changed. Fix the date to continue."
+    }
   }
 }

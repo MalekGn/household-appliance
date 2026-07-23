@@ -10,6 +10,7 @@ import type {
   Dashboard,
   ImpayeClient,
   ImpayeFilter,
+  LicenseStatusDto,
   Payment,
   PaymentInput,
   PurchaseDetail,
@@ -103,4 +104,14 @@ export const api = {
   // -- exports (desktop only; the browser uses a Blob download instead) --
   saveTextFile: (path: string, contents: string): Promise<void> =>
     invoke("save_text_file", { path, contents }),
+
+  // -- licensing / certification --
+  getLicenseStatus: (): Promise<LicenseStatusDto> =>
+    isTauri() ? invoke("get_license_status") : Promise.resolve(mockDb.getLicenseStatus()),
+  getMachineFingerprint: (): Promise<string> =>
+    isTauri() ? invoke("get_machine_fingerprint") : Promise.resolve(mockDb.getMachineFingerprint()),
+  importLicense: (sourcePath: string): Promise<LicenseStatusDto> =>
+    isTauri()
+      ? invoke("import_license", { sourcePath })
+      : Promise.resolve(mockDb.importLicense(sourcePath)),
 };

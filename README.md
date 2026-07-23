@@ -76,10 +76,11 @@ browser. This is what the automated screenshots and tests use.
 ### Tests & type-checking
 
 ```bash
-npm test                 # Vitest unit tests (installment/payment math, overdue logic)
+npm test                 # Vitest unit tests (installment/payment math, overdue + license logic)
 npm run test:integration # Vitest integration tests (api facade + backend flows)
 npm run test:e2e         # Playwright end-to-end suite (tests/e2e/run.mjs)
 npm run build            # vue-tsc type-check + production build
+cd src-tauri && cargo test   # Rust unit tests (incl. license verification)
 ```
 
 ---
@@ -163,9 +164,64 @@ Everything is stored locally in the OS **app-data directory**:
 - **`logo.<ext>`** — the shop logo uploaded in Settings, copied into the app-data
   dir and referenced from the `setting` table. Displayed in the sidebar/header
   via Tauri's asset protocol.
+- **`license.psl`** — the machine-bound certification file (see Licensing below).
+  Present only after activation.
 
 To reset the app to a fresh state, delete `payment_schedule.db` and restart. In a
 development build it is re-seeded; in a release build it comes back empty.
+
+---
+
+## Licensing (certification)
+
+The app is **licensed per machine with a due date**: without a valid,
+cryptographically signed `license.psl`, it starts on a full-screen activation
+lock and every data command is disabled. Verification happens in Rust against an
+**Ed25519 public key embedded in the binary**; the matching **private key never
+ships** and is used offline to mint licenses with the `tools/licensegen` CLI.
+
+> The build ships a placeholder public key that verifies nothing. You **must**
+> generate your own keypair and embed the public key before distributing.
+
+### One-time setup (developer)
+
+```bash
+cd tools/licensegen
+cargo run -- keygen                 # writes private.key (SECRET) + public.key
+```
+
+`keygen` prints a `const LICENSE_PUBLIC_KEY: [u8; 32] = [ … ];` line — paste it
+into `src-tauri/src/license.rs`, replacing the placeholder. Keep `private.key`
+secret and off customer machines (never commit it). Build and distribute the app
+as usual (`npm run tauri build`).
+
+### Activating a customer install
+
+1. The customer opens the app; the lock screen shows a **Machine ID** (a hash of
+   their machine). They send it to you.
+2. You issue a license bound to that machine and a due date:
+
+   ```bash
+   cd tools/licensegen
+   cargo run -- issue \
+       --machine-id <the-machine-id> \
+       --expires 2027-07-22 \
+       --licensee "Shop name" \
+       --key private.key            # → license.psl
+   ```
+
+   `--issued` defaults to today; `--id` is auto-generated if omitted.
+3. Send `license.psl` back. The customer clicks **Import license file** on the
+   lock screen and picks it. On success the app reloads, unlocked.
+
+### Enforcement notes
+
+- The license binds to `sha256(machine-uid)`; re-imaging the OS or changing the
+  machine id requires a re-issued license.
+- Expiry is enforced against the system clock, with an **anti-rollback** guard:
+  setting the clock earlier than the latest date the app has seen is rejected.
+- The lock is enforced in the Rust core (the SQLite DB is not exposed to commands
+  without a valid license); the frontend screen is only the UX around it.
 
 ---
 

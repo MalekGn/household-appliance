@@ -21,6 +21,8 @@ import type {
   ImpayeClient,
   ImpayeFilter,
   Installment,
+  LicenseStatusCode,
+  LicenseStatusDto,
   Payment,
   PaymentInput,
   PurchaseDetail,
@@ -627,6 +629,47 @@ class MockDb {
   clearLogo(): Settings {
     this.settings.logo_path = "";
     return this.getSettings();
+  }
+
+  // -- licensing (browser simulation only) --
+  // The desktop app enforces licensing in Rust; this mock lets the browser
+  // preview and the integration/e2e suites drive the lock → import → unlock
+  // flow. Initial status comes from the `?mockLicense=<status>` query param
+  // (default "valid", so normal preview/tests stay unlocked); a successful
+  // import persists an unlock in localStorage so it survives the reload the
+  // activation screen triggers.
+  private licenseState(): LicenseStatusDto {
+    const search = typeof location !== "undefined" ? location.search : "";
+    const param = new URLSearchParams(search).get("mockLicense");
+    const activated =
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("mockLicenseActivated") === "1";
+    const status = (activated ? "valid" : param || "valid") as LicenseStatusCode;
+    const valid = status === "valid";
+    return {
+      status,
+      valid,
+      licensee: valid ? "Demo Shop" : null,
+      issuedAt: valid ? todayIso() : null,
+      expiresAt: valid ? "2099-12-31" : status === "expired" ? "2025-01-01" : null,
+      machineId: "demo-machine-fingerprint",
+    };
+  }
+
+  getLicenseStatus(): LicenseStatusDto {
+    return this.licenseState();
+  }
+
+  getMachineFingerprint(): string {
+    return "demo-machine-fingerprint";
+  }
+
+  importLicense(_sourcePath: string): LicenseStatusDto {
+    // Simulate a successful activation that persists across the reload.
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("mockLicenseActivated", "1");
+    }
+    return this.licenseState();
   }
 }
 

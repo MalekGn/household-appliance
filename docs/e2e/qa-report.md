@@ -6,6 +6,63 @@ Issues found → Recommendations**. See `CLAUDE.md` (Phase 3: QA) for the workfl
 
 ---
 
+## 2026-07-22 — Feature QA: Licensing / certification gate
+
+### Summary
+
+QA pass for the new **machine-bound, time-limited licensing gate**. The app now
+refuses to run without a valid, Ed25519-signed certification file (`license.psl`)
+bound to the machine fingerprint and a due date. Enforcement is a **hard gate** in
+the Rust core (`src-tauri/src/license.rs`): `lib.rs` verifies the license in
+`setup()` and only `manage(Db)` when it is `Valid`, so without one every data
+command fails and the WebView mounts only the activation lock
+(`src/views/LicenseView.vue`) instead of the app shell. Licenses are minted
+offline by the standalone `tools/licensegen` CLI (the private key never ships).
+
+The browser mock simulates the gate from `?mockLicense=<status>` + a localStorage
+unlock flag, so the lock → import → unlock flow is drivable in the mock-backed
+suites; the authoritative crypto is covered by Rust unit tests. All suites
+**executed** this pass — all green.
+
+### Test cases — RUN
+
+Rust unit — `src-tauri` `cargo test` (13 new license cases): **16/16 passed**.
+- Signature: a valid license passes; a foreign-key signature, a tampered payload, and the shipped placeholder key all report `BadSignature` (fails closed).
+- Validity window is inclusive on both bounds; past the due date → `Expired`; before issue → `NotYetValid`.
+- Machine binding: a different `machine_id_hash` → `WrongMachine`.
+- Anti-rollback: a clock earlier than the recorded watermark → `ClockTampered`; at/after it → valid.
+- Malformed JSON → `Malformed`; the status DTO carries licensee/dates for authentic files.
+
+Frontend unit — `src/stores/license.test.ts` (5 cases, `npm test`): **50/50 passed** overall.
+- `isValid` tracks the backend `valid` flag; an expired status stays locked and exposes its dates; a successful import flips the store to valid; a rejected import (wrong machine) does not unlock.
+
+Integration — `tests/integration/license-gate.integration.test.ts` (5 cases, `npm run test:integration`): **35/35 passed** overall.
+- A `missing` license reports invalid via the `api` facade and keeps the store locked; the machine fingerprint is always available.
+- Import flips the api status to valid and the unlock persists across a simulated reload; the store transitions locked → valid.
+- An `expired` license stays invalid and surfaces its expiry date rather than unlocking.
+
+E2E — `tests/e2e/run.mjs` (3 new license cases, `npm run test:e2e`): **28/28 passed**, no browser console errors.
+- An invalid certification shows the activation lock with the machine ID and **no** app shell / sidebar behind it.
+- Clicking **Import license file** activates the mock and reloads into the full app shell (9 sidebar items); the lock screen is dismissed.
+- An expired certification stays locked with an expiry message.
+
+### Issues found
+
+None. `vue-tsc --noEmit` clean; `cargo build` warning-free.
+
+### Recommendations
+
+- **Before shipping**, replace the placeholder `LICENSE_PUBLIC_KEY` in
+  `src-tauri/src/license.rs` with a real key from `licensegen keygen` (the
+  placeholder verifies nothing, so every license is rejected — the app fails
+  closed until the key is embedded). This is the one manual release step.
+- The true desktop crypto path (real `license.psl` on disk, machine-uid binding)
+  is exercised by the Rust unit tests; a WebDriver/tauri-driver E2E against a
+  real bundle would be the next increment but needs a platform-specific driver
+  and a build signed with a test key — out of scope for this pass.
+
+---
+
 ## 2026-07-22 — Feature QA: Rapports (reports) page
 
 ### Summary
