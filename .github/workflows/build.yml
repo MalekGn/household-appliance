@@ -52,7 +52,7 @@ jobs:
           # deb -> Debian/Ubuntu, rpm -> RedHat/Fedora/openSUSE.
           - os: ubuntu-22.04
             label: Linux (deb + rpm)
-            bundles: deb,rpm
+            bundles: deb,rpm,appimage
           # Windows: msi + nsis installers run on Windows 10 and 11.
           - os: windows-latest
             label: Windows (msi + nsis)
