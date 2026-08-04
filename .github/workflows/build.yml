@@ -1,6 +1,6 @@
 name: Release desktop bundles
 
-# Build the Tauri desktop app for Linux (deb + rpm/RedHat) and Windows (msi + nsis)
+# Build the Tauri desktop app for Linux (deb + rpm/RedHat + appimage) and Windows (msi + nsis)
 # and publish them to a GitHub Release whenever a version tag is pushed, e.g.:
 #   git tag v0.1.0 && git push origin v0.1.0
 # `workflow_dispatch` lets you also trigger a build manually from the Actions tab.
@@ -49,9 +49,9 @@ jobs:
       matrix:
         include:
           # Linux: build on 22.04 for broad glibc compatibility with older distros.
-          # deb -> Debian/Ubuntu, rpm -> RedHat/Fedora/openSUSE.
+          # deb -> Debian/Ubuntu, rpm -> RedHat/Fedora/openSUSE, appimage -> no installation.
           - os: ubuntu-22.04
-            label: Linux (deb + rpm)
+            label: Linux (deb + rpm + appimage)
             bundles: deb,rpm,appimage
           # Windows: msi + nsis installers run on Windows 10 and 11.
           - os: windows-latest
@@ -104,7 +104,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'paymentSchedule ${{ github.ref_name }}'
-          releaseBody: 'Desktop installers for Linux (deb/rpm) and Windows (msi/nsis). See the assets below.'
+          releaseBody: 'Desktop installers for Linux (deb/rpm/appimage) and Windows (msi/nsis). See the assets below.'
           # Published as a draft so you can review the assets and notes before it goes live.
           releaseDraft: true
           prerelease: false
